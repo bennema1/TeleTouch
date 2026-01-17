@@ -1,0 +1,109 @@
+opencv-python
+numpy
+
+# TELE-TOUCH: Surgical Prediction System
+
+**AI-powered latency compensation for remote surgery**
+
+## Quick Start (Windows)
+
+```bash
+# 1. Clone/download this folder
+
+# 2. Install dependencies
+pip install opencv-python numpy
+
+# 3. Run the demo
+cd demo
+python main.py
+```
+
+Or just double-click `run_demo.bat`
+
+## What This Does
+
+This demo visualizes real-time surgical instrument prediction:
+
+- **⚪ White Cursor**: Actual instrument position (ground truth)
+- **🔴 Red Cursor**: What a lagged robot sees (500ms behind)  
+- **🟢 Green Cursor**: AI prediction (compensating for lag)
+
+The goal: Green should stay close to White, proving the AI can "see into the future" and compensate for network latency.
+
+## Controls
+
+| Key | Action |
+|-----|--------|
+| `SPACE` | Pause/Resume |
+| `R` | Restart |
+| `Q` / `ESC` | Quit |
+| `S` | Screenshot |
+| `1` | Toggle white cursor |
+| `2` | Toggle red cursor |
+| `3` | Toggle green cursor |
+| `T` | Toggle motion trails |
+| `I` | Toggle info panel |
+
+## Command Line Options
+
+```bash
+python main.py --help
+
+Options:
+  --video PATH     Path to surgical video file
+  --model PATH     Path to trained AI model (.pth)
+  --width N        Display width (default: 1280)
+  --height N       Display height (default: 720)
+  --fps N          Target FPS (default: 30)
+  --latency N      Simulated latency in ms (default: 500)
+```
+
+## Project Structure
+
+```
+tele-touch/
+├── demo/
+│   ├── main.py              # Main demo application
+│   ├── lag_buffer.py        # Simulates network delay
+│   ├── position_history.py  # Tracks positions for AI input
+│   ├── predictor.py         # AI prediction interface
+│   ├── overlay_renderer.py  # Draws cursors, trails, UI
+│   └── synthetic_data.py    # Generates test trajectories
+├── data/                    # For annotation data (from Person A)
+├── models/                  # For trained models (from Person B)
+├── requirements.txt
+├── run_demo.bat            # Windows launcher
+└── README.md
+```
+
+## Integration Points
+
+### For Person A (Data Engineer)
+Place processed annotation data in `data/` folder.
+The demo can load real position data instead of synthetic.
+
+### For Person B (ML Engineer)  
+Place trained model in `models/` folder.
+Update `predictor.py` to load your LSTM model:
+```python
+python main.py --model models/surgery_predictor.pth
+```
+
+### For Person D (Integration)
+Voice/safety integrations can hook into:
+- `demo.avg_error` - current prediction error
+- `demo.white_pos`, `demo.green_pos` - positions for analysis
+
+## Current Status
+
+- [x] Core demo loop
+- [x] Lag buffer (500ms delay simulation)
+- [x] Overlay rendering (cursors, trails, UI)
+- [x] Synthetic data generation
+- [x] Dummy predictor (quadratic extrapolation)
+- [ ] Real surgical video integration
+- [ ] Real annotation data loading
+- [ ] LSTM model integration
+- [ ] LiveKit streaming
+- [ ] ElevenLabs voice feedback
+- [ ] Overshoot safety monitoring

@@ -22,6 +22,10 @@ import numpy as np
 import time
 from typing import Optional, Tuple
 from pathlib import Path
+import sys
+
+# Add parent directory to path for integrations
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Import our components
 from lag_buffer import LagBuffer
@@ -29,6 +33,19 @@ from position_history import PositionHistory
 from predictor import create_predictor, PredictorInterface
 from overlay_renderer import OverlayRenderer
 from synthetic_data import SyntheticDataSource
+
+# Import voice and safety integration (optional - fails gracefully if not available)
+try:
+    from integrations.demo_interface import (
+        connect_to_livekit,
+        announce,
+        check_safety,
+        disconnect
+    )
+    VOICE_INTEGRATION_AVAILABLE = True
+except ImportError:
+    VOICE_INTEGRATION_AVAILABLE = False
+    print("Warning: Voice integration not available. Demo will run without voice features.")
 
 
 class TeleTouchDemo:
@@ -95,6 +112,15 @@ class TeleTouchDemo:
         # Performance metrics
         self.error_history = []
         self.avg_error = 0.0
+        
+        # Voice and safety integration
+        self.voice_enabled = False
+        if VOICE_INTEGRATION_AVAILABLE:
+            self.voice_enabled = connect_to_livekit()
+            if self.voice_enabled:
+                print("  Voice integration: ENABLED")
+            else:
+                print("  Voice integration: DISABLED (connection failed)")
         
         print(f"TeleTouchDemo initialized:")
         print(f"  Resolution: {self.width}x{self.height}")
@@ -220,9 +246,36 @@ class TeleTouchDemo:
         # Draw legend
         self.renderer.draw_legend(frame)
         
-        # Draw warning if error is too high
-        if self.avg_error > 40:
-            self.renderer.draw_warning(frame, "HIGH PREDICTION ERROR")
+        # === VOICE AND SAFETY INTEGRATION ===
+        if self.voice_enabled and VOICE_INTEGRATION_AVAILABLE:
+            # Announce warnings for high error (throttled to every 2 seconds)
+            if self.avg_error > 30:
+                if self.frame_count % 60 == 0:  # Every 2 seconds at 30fps
+                    announce("warning")
+            
+            # Announce good accuracy occasionally (every 4 seconds)
+            elif self.avg_error < 10:
+                if self.frame_count % 120 == 0:  # Every 4 seconds
+                    accuracy = int(max(0, 100 - self.avg_error))
+                    announce(f"prediction_accuracy:{accuracy}")
+            
+            # Safety check (auto-throttled to every 5 seconds)
+            safety_result = check_safety(
+                frame=frame,
+                error_pixels=self.avg_error
+            )
+            
+            # Display warning if UNSAFE
+            if safety_result.get("safety") == "UNSAFE":
+                warning_msg = safety_result.get("message", "UNSAFE: High prediction error")
+                self.renderer.draw_warning(frame, warning_msg)
+            elif self.avg_error > 40:
+                # Fallback warning if safety check not available
+                self.renderer.draw_warning(frame, "HIGH PREDICTION ERROR")
+        else:
+            # Original warning logic if voice integration not available
+            if self.avg_error > 40:
+                self.renderer.draw_warning(frame, "HIGH PREDICTION ERROR")
         
         # Draw pause indicator
         if self.paused:
@@ -360,6 +413,10 @@ class TeleTouchDemo:
             if self.video_capture:
                 self.video_capture.release()
             cv2.destroyAllWindows()
+            
+            # Disconnect from voice integration
+            if self.voice_enabled and VOICE_INTEGRATION_AVAILABLE:
+                disconnect()
             
             print("\nDemo ended.")
             print(f"Total frames: {self.frame_count}")

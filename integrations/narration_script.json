@@ -1,0 +1,9 @@
+{
+  "intro": "Surgical assistance system online. Latency compensation active.",
+  "high_accuracy": "Prediction accuracy high. System operating normally.",
+  "medium_accuracy": "Prediction accuracy moderate. Monitoring performance.",
+  "low_accuracy": "Caution: prediction error increasing. Recommend verification.",
+  "warning": "Warning: high prediction variance. Manual override suggested.",
+  "stabilized": "System stabilized. Prediction accuracy restored.",
+  "error_report": "Current prediction error: {error} pixels. Confidence: {confidence} percent."
+}

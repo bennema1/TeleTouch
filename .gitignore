@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+
+# Keep secrets local (create config.py from config.example.py)
+config.py
+
+# Temporary files
+temp_safety_check.png
+*.tmp

@@ -1,11 +1,19 @@
 """
+<<<<<<< Updated upstream
 Color-Based Instrument Detector - Fallback method using HSV color space.
 
 Use this if ROSMA annotations are not available.
+=======
+Color Detection Data Source
+
+Provides instrument positions by detecting them in video frames using
+color-based segmentation.
+>>>>>>> Stashed changes
 """
 
 import cv2
 import numpy as np
+<<<<<<< Updated upstream
 from typing import List, Tuple, Optional, Dict
 from collections import deque
 
@@ -178,26 +186,49 @@ class ColorDetector:
         self.position_history.append(positions)
         
         return positions
+=======
+from typing import Tuple, Optional
+from pathlib import Path
+try:
+    from .instrument_detector import InstrumentDetector
+except ImportError:
+    from instrument_detector import InstrumentDetector
+>>>>>>> Stashed changes
 
 
 class ColorDetectionDataSource:
     """
+<<<<<<< Updated upstream
     Data source that uses color-based detection to provide instrument positions.
     """
     
     def __init__(self, video_path: str, instrument_index: int = 0, 
                  detector_params: Optional[Dict] = None):
+=======
+    Data source that detects instruments using color-based detection.
+    
+    This is a fallback when annotations are not available.
+    """
+    
+    def __init__(self, video_path: str, instrument_index: int = 0,
+                 params_file: Optional[str] = None):
+>>>>>>> Stashed changes
         """
         Initialize color detection data source.
         
         Args:
             video_path: Path to video file
             instrument_index: Which instrument to track (0 = first, 1 = second, etc.)
+<<<<<<< Updated upstream
             detector_params: Optional parameters for ColorDetector
+=======
+            params_file: Path to JSON file with detection parameters
+>>>>>>> Stashed changes
         """
         self.video_path = video_path
         self.instrument_index = instrument_index
         
+<<<<<<< Updated upstream
         # Initialize detector
         if detector_params:
             self.detector = ColorDetector(**detector_params)
@@ -277,3 +308,99 @@ class ColorDetectionDataSource:
         """Release resources."""
         if self.video_capture:
             self.video_capture.release()
+=======
+        # Open video
+        self.video_capture = cv2.VideoCapture(video_path)
+        if not self.video_capture.isOpened():
+            raise ValueError(f"Could not open video: {video_path}")
+        
+        # Get video properties
+        self.video_frame_count = int(self.video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.video_width = int(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.video_height = int(self.video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.video_fps = self.video_capture.get(cv2.CAP_PROP_FPS)
+        
+        # Initialize detector
+        self.detector = InstrumentDetector(params_file=params_file)
+        
+        # Current frame tracking
+        self.current_frame = 0
+        self.last_known_position = (0.5, 0.5)  # Default center position
+        
+        print(f"[ColorDetectionDataSource] Initialized")
+        print(f"  Video: {Path(video_path).name}")
+        print(f"  Resolution: {self.video_width}x{self.video_height}")
+        print(f"  Frames: {self.video_frame_count}")
+        print(f"  FPS: {self.video_fps:.1f}")
+        print(f"  Instrument index: {instrument_index}")
+        print(f"  Using detector params: {params_file or 'default'}")
+    
+    def get_current_position(self) -> Tuple[float, float]:
+        """
+        Get position for current frame and advance.
+        
+        Returns:
+            Normalized (x, y) position (0-1 range)
+        """
+        # Read current frame
+        ret, frame = self.video_capture.read()
+        
+        if not ret:
+            # End of video - loop or return last known
+            self.video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = self.video_capture.read()
+            self.detector.reset()  # Reset tracking when looping
+        
+        if ret:
+            # Detect instruments
+            tips = self.detector.detect(frame)
+            
+            # Get the requested instrument
+            if tips and self.instrument_index < len(tips):
+                self.last_known_position = tips[self.instrument_index]
+            # else: use last known position
+        
+        self.current_frame += 1
+        return self.last_known_position
+    
+    def get_position(self, frame_number: int) -> Tuple[float, float]:
+        """
+        Get position for a specific frame.
+        
+        Args:
+            frame_number: Frame number (0-indexed)
+            
+        Returns:
+            Normalized (x, y) position
+        """
+        # Seek to frame
+        self.video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+        ret, frame = self.video_capture.read()
+        
+        if ret:
+            tips = self.detector.detect(frame)
+            if tips and self.instrument_index < len(tips):
+                return tips[self.instrument_index]
+        
+        return self.last_known_position
+    
+    def reset(self) -> None:
+        """Reset to beginning."""
+        self.video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        self.current_frame = 0
+        self.detector.reset()
+        self.last_known_position = (0.5, 0.5)
+    
+    def release(self) -> None:
+        """Release video capture."""
+        if self.video_capture:
+            self.video_capture.release()
+    
+    def __len__(self) -> int:
+        """Total number of frames."""
+        return self.video_frame_count
+    
+    def get_name(self) -> str:
+        """Get data source name."""
+        return "Color Detection"
+>>>>>>> Stashed changes

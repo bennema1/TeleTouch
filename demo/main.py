@@ -34,9 +34,18 @@ from predictor import create_predictor, PredictorInterface
 from overlay_renderer import OverlayRenderer
 from synthetic_data import SyntheticDataSource
 from kinematic_data import KinematicDataSource
+<<<<<<< Updated upstream
 from annotation_reader import AnnotationDataSource
 from csv_annotation_reader import CSVAnnotationDataSource
 from color_detector import ColorDetectionDataSource
+=======
+from color_detector import ColorDetectionDataSource
+try:
+    from sam_data_source import SAMDataSource
+    SAM_AVAILABLE = True
+except ImportError:
+    SAM_AVAILABLE = False
+>>>>>>> Stashed changes
 
 # Import voice and safety integration (optional - fails gracefully if not available)
 try:
@@ -63,9 +72,17 @@ class TeleTouchDemo:
                  video_path: Optional[str] = None,
                  model_path: Optional[str] = None,
                  kinematics_path: Optional[str] = None,
+<<<<<<< Updated upstream
                  annotation_path: Optional[str] = None,
                  csv_annotation_path: Optional[str] = None,
                  use_color_detection: bool = False,
+=======
+                 use_color_detection: bool = False,
+                 detector_params_file: Optional[str] = None,
+                 use_sam_detection: bool = False,
+                 sam_tips_file: Optional[str] = None,
+                 sam_model_path: Optional[str] = None,
+>>>>>>> Stashed changes
                  instrument_index: int = 0):
         """
         Initialize the demo.
@@ -115,6 +132,7 @@ class TeleTouchDemo:
         self.predictor = create_predictor(model_path)
         self.renderer = OverlayRenderer(self.width, self.height)
         
+<<<<<<< Updated upstream
         # Data source (CSV Annotations, ROSMA JSON Annotations, Color Detection, Real Kinematics, or Synthetic)
         if csv_annotation_path and Path(csv_annotation_path).exists() and video_path:
             # SOLUTION 1A: Use CSV annotations (USER PROVIDED)
@@ -135,6 +153,32 @@ class TeleTouchDemo:
             self.data_source = ColorDetectionDataSource(
                 video_path=video_path,
                 instrument_index=instrument_index
+=======
+        # Data source (SAM, Color Detection, Real Kinematics, or Synthetic)
+        if use_sam_detection and SAM_AVAILABLE and video_path and Path(video_path).exists():
+            # Use SAM detection
+            initial_tips = None
+            if sam_tips_file and Path(sam_tips_file).exists():
+                # Load tips from file
+                initial_tips = []
+                with open(sam_tips_file, 'r') as f:
+                    for line in f:
+                        x, y = map(int, line.strip().split(','))
+                        initial_tips.append((x, y))
+            
+            self.data_source = SAMDataSource(
+                video_path=video_path,
+                instrument_index=instrument_index,
+                model_path=sam_model_path,
+                initial_tips=initial_tips
+            )
+        elif use_color_detection and video_path and Path(video_path).exists():
+            # Use color-based detection
+            self.data_source = ColorDetectionDataSource(
+                video_path=video_path,
+                instrument_index=instrument_index,
+                params_file=detector_params_file
+>>>>>>> Stashed changes
             )
         elif kinematics_path and Path(kinematics_path).exists():
             self.data_source = KinematicDataSource(kinematics_path)
@@ -520,6 +564,18 @@ def main():
                         help="Target FPS (default: 30)")
     parser.add_argument("--latency", type=int, default=500,
                         help="Simulated latency in ms (default: 500)")
+    parser.add_argument("--color-detect", action="store_true",
+                        help="Use color-based detection (fallback if no annotations)")
+    parser.add_argument("--detector-params", type=str, default=None,
+                        help="Path to detector parameters JSON file")
+    parser.add_argument("--instrument-index", type=int, default=0,
+                        help="Which instrument to track (0=first, 1=second, etc.)")
+    parser.add_argument("--sam-detect", action="store_true",
+                        help="Use SAM (Segment Anything Model) for detection")
+    parser.add_argument("--sam-tips", type=str, default=None,
+                        help="Path to file with initial tip positions (from sam_initializer.py)")
+    parser.add_argument("--sam-model", type=str, default=None,
+                        help="Path to SAM model weights (auto-downloads if not provided)")
     
     args = parser.parse_args()
     
@@ -531,9 +587,17 @@ def main():
         video_path=args.video,
         model_path=args.model,
         kinematics_path=args.kinematics,
+<<<<<<< Updated upstream
         annotation_path=args.annotations,
         csv_annotation_path=args.csv_annotations,
         use_color_detection=args.color_detect,
+=======
+        use_color_detection=args.color_detect,
+        detector_params_file=args.detector_params,
+        use_sam_detection=args.sam_detect,
+        sam_tips_file=args.sam_tips,
+        sam_model_path=args.sam_model,
+>>>>>>> Stashed changes
         instrument_index=args.instrument_index
     )
     

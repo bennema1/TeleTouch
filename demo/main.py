@@ -4,7 +4,7 @@ Main entry point for the surgical prediction visualization
 
 This demo shows:
 - White cursor: Actual instrument position
-- Red cursor: What a lagged robot sees (500ms behind)
+- Red cursor: What a lagged robot sees (100ms behind)
 - Green cursor: AI prediction (compensating for lag)
 
 Controls:
@@ -197,8 +197,10 @@ class TeleTouchDemo:
         # Get predicted position (GREEN cursor)
         if self.position_history.is_ready(min_positions=10):
             recent_positions = self.position_history.get_last(10)
-            # Predict 15 frames ahead = 500ms at 30fps
-            steps_ahead = int(self.latency_seconds * self.fps)
+            # Predict 100ms ahead (3 frames @ 30fps) as requested, 
+            # even though the system lag is 500ms.
+            prediction_ms = 100
+            steps_ahead = int((prediction_ms / 1000.0) * self.fps)
             self.green_pos = self.predictor.predict(recent_positions, steps_ahead)
         else:
             self.green_pos = self.white_pos  # Not enough history yet
@@ -233,12 +235,12 @@ class TeleTouchDemo:
         
         if self.show_red and self.red_pos:
             self.renderer.draw_cursor(frame, self.red_pos,
-                                      self.renderer.RED, "LAGGED 500ms",
+                                      self.renderer.RED, f"LAGGED {int(self.latency_seconds*1000)}ms",
                                       cursor_type="lagged")
         
         if self.show_green and self.green_pos:
             self.renderer.draw_cursor(frame, self.green_pos,
-                                      self.renderer.GREEN, "PREDICTED",
+                                      self.renderer.GREEN, "AI (100ms Pred)",
                                       cursor_type="predicted")
         
         # Draw info panel

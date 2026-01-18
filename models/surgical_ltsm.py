@@ -71,6 +71,7 @@ class CholecystectomyLSTM(nn.Module):
             nn.Linear(hidden_size, hidden_size // 2),
             nn.ReLU(),
             nn.Linear(hidden_size // 2, input_size),
+            # In baseline, input_size=2, so this outputs (batch, 2)
             nn.Softplus()
         )
 
@@ -156,11 +157,11 @@ class CholecystectomyLSTMv2(nn.Module):
         )
 
         # Output layers
-        self.output_layer = nn.Linear(hidden_size, input_size)
+        self.output_layer = nn.Linear(hidden_size, 2)
         self.uncertainty_layer = nn.Sequential(
             nn.Linear(hidden_size, 32),
             nn.ReLU(),
-            nn.Linear(32, input_size),
+            nn.Linear(32, 2),
             nn.Softplus()
         )
 
@@ -192,26 +193,27 @@ class CholecystectomyLSTMv2(nn.Module):
         return self.forward(history)
 
 
-def create_cholecystectomy_lstm(model_version: str = 'v1') -> nn.Module:
+def create_cholecystectomy_lstm(model_version: str = 'v1', input_size: int = 2) -> nn.Module:
     """
     Factory function for creating cholecystectomy-specialized LSTM models.
 
     Args:
         model_version: 'v1' (basic specialized LSTM) or 'v2' (with convolution)
+        input_size: Number of input features
 
     Returns:
         Cholecystectomy-optimized model
     """
     if model_version == 'v1':
         return CholecystectomyLSTM(
-            input_size=2,
+            input_size=input_size,
             hidden_size=128,
             num_layers=2,
             dropout=0.2
         )
     elif model_version == 'v2':
         return CholecystectomyLSTMv2(
-            input_size=2,
+            input_size=input_size,
             hidden_size=128,
             num_layers=3,
             conv_filters=64,

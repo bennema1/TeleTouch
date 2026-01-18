@@ -39,14 +39,18 @@ def process_rosmag_data(input_dir, output_dir, sequence_length=10, prediction_ho
             pos_y = 0.5 + np.cumsum(vy * dt)
             
             # Normalize to 0-1 range based on the trial's bounding box
-            # This makes it compatible with the screen coordinates
             x_min, x_max = pos_x.min(), pos_x.max()
             y_min, y_max = pos_y.min(), pos_y.max()
             
             if x_max > x_min:
                 pos_x = (pos_x - x_min) / (x_max - x_min)
+            else:
+                pos_x = pos_x * 0 + 0.5
+                
             if y_max > y_min:
                 pos_y = (pos_y - y_min) / (y_max - y_min)
+            else:
+                pos_y = pos_y * 0 + 0.5
                 
             positions = np.stack([pos_x, pos_y], axis=1) # (N, 2)
             
@@ -102,5 +106,5 @@ if __name__ == "__main__":
         "data/rosma",
         "data/processed",
         sequence_length=10,
-        prediction_horizon=30
+        prediction_horizon=3
     )

@@ -33,6 +33,7 @@ from position_history import PositionHistory
 from predictor import create_predictor, PredictorInterface
 from overlay_renderer import OverlayRenderer
 from synthetic_data import SyntheticDataSource
+from kinematic_data import KinematicDataSource
 
 # Import voice and safety integration (optional - fails gracefully if not available)
 try:
@@ -57,7 +58,8 @@ class TeleTouchDemo:
                  fps: int = 30,
                  latency_ms: int = 500,
                  video_path: Optional[str] = None,
-                 model_path: Optional[str] = None):
+                 model_path: Optional[str] = None,
+                 kinematics_path: Optional[str] = None):
         """
         Initialize the demo.
         
@@ -89,7 +91,12 @@ class TeleTouchDemo:
         self.position_history = PositionHistory(max_length=30)
         self.predictor = create_predictor(model_path)
         self.renderer = OverlayRenderer(self.width, self.height)
-        self.data_source = SyntheticDataSource(fps=fps, duration_seconds=120, seed=42)
+        
+        # Data source (Real or Synthetic)
+        if kinematics_path and Path(kinematics_path).exists():
+            self.data_source = KinematicDataSource(kinematics_path)
+        else:
+            self.data_source = SyntheticDataSource(fps=fps, duration_seconds=120, seed=42)
         
         # State
         self.running = True
@@ -127,6 +134,7 @@ class TeleTouchDemo:
         print(f"  FPS: {self.fps}")
         print(f"  Latency: {latency_ms}ms")
         print(f"  Predictor: {self.predictor.get_name()}")
+        print(f"  Data Source: {getattr(self.data_source, 'get_name', lambda: 'Synthetic')()}")
         print(f"  Video: {'Loaded' if self.video_capture else 'Synthetic'}")
     
     def get_background_frame(self) -> np.ndarray:
@@ -435,6 +443,8 @@ def main():
                         help="Path to surgical video file")
     parser.add_argument("--model", type=str, default=None,
                         help="Path to trained AI model (.pth)")
+    parser.add_argument("--kinematics", type=str, default=None,
+                        help="Path to real kinematics data (.npy)")
     parser.add_argument("--width", type=int, default=1280,
                         help="Display width (default: 1280)")
     parser.add_argument("--height", type=int, default=720,
@@ -452,7 +462,8 @@ def main():
         fps=args.fps,
         latency_ms=args.latency,
         video_path=args.video,
-        model_path=args.model
+        model_path=args.model,
+        kinematics_path=args.kinematics
     )
     
     demo.run()

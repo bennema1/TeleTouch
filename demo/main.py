@@ -34,6 +34,9 @@ from predictor import create_predictor, PredictorInterface
 from overlay_renderer import OverlayRenderer
 from synthetic_data import SyntheticDataSource
 from kinematic_data import KinematicDataSource
+from annotation_reader import AnnotationDataSource
+from csv_annotation_reader import CSVAnnotationDataSource
+from color_detector import ColorDetectionDataSource
 
 # Import voice and safety integration (optional - fails gracefully if not available)
 try:
@@ -59,7 +62,11 @@ class TeleTouchDemo:
                  latency_ms: int = 500,
                  video_path: Optional[str] = None,
                  model_path: Optional[str] = None,
-                 kinematics_path: Optional[str] = None):
+                 kinematics_path: Optional[str] = None,
+                 annotation_path: Optional[str] = None,
+                 csv_annotation_path: Optional[str] = None,
+                 use_color_detection: bool = False,
+                 instrument_index: int = 0):
         """
         Initialize the demo.
         
@@ -108,8 +115,28 @@ class TeleTouchDemo:
         self.predictor = create_predictor(model_path)
         self.renderer = OverlayRenderer(self.width, self.height)
         
-        # Data source (Real or Synthetic)
-        if kinematics_path and Path(kinematics_path).exists():
+        # Data source (CSV Annotations, ROSMA JSON Annotations, Color Detection, Real Kinematics, or Synthetic)
+        if csv_annotation_path and Path(csv_annotation_path).exists() and video_path:
+            # SOLUTION 1A: Use CSV annotations (USER PROVIDED)
+            self.data_source = CSVAnnotationDataSource(
+                csv_path=csv_annotation_path,
+                video_path=video_path,
+                instrument_index=instrument_index
+            )
+        elif annotation_path and Path(annotation_path).exists() and video_path:
+            # SOLUTION 1B: Use ROSMA JSON annotations
+            self.data_source = AnnotationDataSource(
+                annotation_path=annotation_path,
+                video_path=video_path,
+                instrument_index=instrument_index
+            )
+        elif use_color_detection and video_path and Path(video_path).exists():
+            # SOLUTION 2: Use color-based detection (fallback)
+            self.data_source = ColorDetectionDataSource(
+                video_path=video_path,
+                instrument_index=instrument_index
+            )
+        elif kinematics_path and Path(kinematics_path).exists():
             self.data_source = KinematicDataSource(kinematics_path)
         else:
             self.data_source = SyntheticDataSource(fps=fps, duration_seconds=120, seed=42)
@@ -450,6 +477,8 @@ class TeleTouchDemo:
             # Cleanup
             if self.video_capture:
                 self.video_capture.release()
+            if hasattr(self.data_source, 'release'):
+                self.data_source.release()
             cv2.destroyAllWindows()
             
             # Disconnect from voice integration
@@ -475,6 +504,14 @@ def main():
                         help="Path to trained AI model (.pth)")
     parser.add_argument("--kinematics", type=str, default=None,
                         help="Path to real kinematics data (.npy)")
+    parser.add_argument("--csv-annotations", type=str, default=None,
+                        help="Path to CSV annotation file (frame, x, y columns)")
+    parser.add_argument("--annotations", type=str, default=None,
+                        help="Path to ROSMA annotation JSON file")
+    parser.add_argument("--color-detect", action="store_true",
+                        help="Use color-based detection (fallback if no annotations)")
+    parser.add_argument("--instrument-index", type=int, default=0,
+                        help="Which instrument to track (0=first, 1=second, etc.)")
     parser.add_argument("--width", type=int, default=1280,
                         help="Display width (default: 1280)")
     parser.add_argument("--height", type=int, default=720,
@@ -493,7 +530,11 @@ def main():
         latency_ms=args.latency,
         video_path=args.video,
         model_path=args.model,
-        kinematics_path=args.kinematics
+        kinematics_path=args.kinematics,
+        annotation_path=args.annotations,
+        csv_annotation_path=args.csv_annotations,
+        use_color_detection=args.color_detect,
+        instrument_index=args.instrument_index
     )
     
     demo.run()

@@ -90,10 +90,11 @@ class OverlayRenderer:
         self.trail_green = TrailManager(max_length=25, color=self.GREEN)
         
         # Cursor settings - DIFFERENT SIZES for distinction
-        self.cursor_radius_actual = 8      # White: smallest, solid dot
-        self.cursor_radius_lagged = 14     # Red: medium, hollow circle
-        self.cursor_radius_predicted = 18  # Green: largest, crosshair style
-        self.cursor_outline = 2
+        # Made larger for visibility on surgical video backgrounds
+        self.cursor_radius_actual = 12     # White: solid dot (robotic arm tip)
+        self.cursor_radius_lagged = 18     # Red: medium, hollow circle
+        self.cursor_radius_predicted = 22  # Green: largest, crosshair style
+        self.cursor_outline = 3            # Thicker outline for visibility
     
     def normalized_to_pixel(self, pos: Tuple[float, float]) -> Tuple[int, int]:
         """Convert normalized (0-1) coordinates to pixel coordinates."""
@@ -127,18 +128,23 @@ class OverlayRenderer:
         
         # Draw different shapes based on cursor type
         if cursor_type == "actual":
-            # ACTUAL (White): Small solid filled circle with glow effect
-            # Draw outer glow
-            cv2.circle(frame, (px, py), self.cursor_radius_actual + 4, 
-                      (100, 100, 100), 2, cv2.LINE_AA)
-            # Draw filled circle
+            # ACTUAL (White): Robotic arm tip - solid filled circle with glow effect
+            # Draw outer glow (for visibility on surgical video)
+            cv2.circle(frame, (px, py), self.cursor_radius_actual + 6, 
+                      (200, 200, 200), 3, cv2.LINE_AA)
+            cv2.circle(frame, (px, py), self.cursor_radius_actual + 3, 
+                      (150, 150, 150), 2, cv2.LINE_AA)
+            # Draw filled circle (robotic arm tip)
             cv2.circle(frame, (px, py), self.cursor_radius_actual, color, -1, cv2.LINE_AA)
+            # Draw black outline for contrast
             cv2.circle(frame, (px, py), self.cursor_radius_actual, self.BLACK, 
-                       2, cv2.LINE_AA)
+                       3, cv2.LINE_AA)
             
         elif cursor_type == "lagged":
-            # LAGGED (Red): Hollow square/diamond shape
+            # LAGGED (Red): Hollow square/diamond shape - what robot sees (delayed)
             size = self.cursor_radius_lagged
+            # Draw outer glow for visibility
+            cv2.circle(frame, (px, py), size + 4, (100, 100, 255), 2, cv2.LINE_AA)
             # Draw a rotated square (diamond)
             pts = np.array([
                 [px, py - size],      # Top
@@ -146,32 +152,35 @@ class OverlayRenderer:
                 [px, py + size],      # Bottom
                 [px - size, py]       # Left
             ], np.int32)
-            cv2.polylines(frame, [pts], True, color, 3, cv2.LINE_AA)
+            cv2.polylines(frame, [pts], True, color, 4, cv2.LINE_AA)
             # Inner diamond
-            inner_size = size - 4
+            inner_size = size - 5
             pts_inner = np.array([
                 [px, py - inner_size],
                 [px + inner_size, py],
                 [px, py + inner_size],
                 [px - inner_size, py]
             ], np.int32)
-            cv2.polylines(frame, [pts_inner], True, (150, 150, 255), 1, cv2.LINE_AA)
+            cv2.polylines(frame, [pts_inner], True, (150, 150, 255), 2, cv2.LINE_AA)
             
         elif cursor_type == "predicted":
-            # PREDICTED (Green): Crosshair/target reticle style
+            # PREDICTED (Green): Crosshair/target reticle style - AI prediction
             size = self.cursor_radius_predicted
-            # Outer circle (hollow)
-            cv2.circle(frame, (px, py), size, color, 2, cv2.LINE_AA)
+            # Draw outer glow for visibility on surgical video
+            cv2.circle(frame, (px, py), size + 5, (100, 255, 100), 2, cv2.LINE_AA)
+            # Outer circle (hollow) - thicker for visibility
+            cv2.circle(frame, (px, py), size, color, 3, cv2.LINE_AA)
             # Inner circle (hollow, smaller)
-            cv2.circle(frame, (px, py), size // 2, color, 2, cv2.LINE_AA)
-            # Crosshair lines
-            gap = 6  # Gap in center
+            cv2.circle(frame, (px, py), size // 2, color, 3, cv2.LINE_AA)
+            # Crosshair lines - thicker for visibility
+            gap = 8  # Gap in center
+            line_thickness = 3
             # Horizontal line
-            cv2.line(frame, (px - size - 5, py), (px - gap, py), color, 2, cv2.LINE_AA)
-            cv2.line(frame, (px + gap, py), (px + size + 5, py), color, 2, cv2.LINE_AA)
+            cv2.line(frame, (px - size - 8, py), (px - gap, py), color, line_thickness, cv2.LINE_AA)
+            cv2.line(frame, (px + gap, py), (px + size + 8, py), color, line_thickness, cv2.LINE_AA)
             # Vertical line
-            cv2.line(frame, (px, py - size - 5), (px, py - gap), color, 2, cv2.LINE_AA)
-            cv2.line(frame, (px, py + gap), (px, py + size + 5), color, 2, cv2.LINE_AA)
+            cv2.line(frame, (px, py - size - 8), (px, py - gap), color, line_thickness, cv2.LINE_AA)
+            cv2.line(frame, (px, py + gap), (px, py + size + 8), color, line_thickness, cv2.LINE_AA)
             
         else:
             # Default: simple filled circle

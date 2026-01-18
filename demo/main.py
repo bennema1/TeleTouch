@@ -77,14 +77,30 @@ class TeleTouchDemo:
         self.latency_seconds = latency_ms / 1000.0
         self.frame_time = 1.0 / fps
         
-        # Video source
+        # Video/image source
         self.video_path = video_path
         self.video_capture = None
+        self.background_image = None
+        
         if video_path and Path(video_path).exists():
-            self.video_capture = cv2.VideoCapture(video_path)
-            # Get actual video dimensions
-            self.width = int(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-            self.height = int(self.video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            video_path_obj = Path(video_path)
+            # Check if it's an image file
+            if video_path_obj.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp']:
+                # Load static image
+                self.background_image = cv2.imread(str(video_path))
+                if self.background_image is not None:
+                    self.height, self.width = self.background_image.shape[:2]
+                    print(f"  Loaded background image: {video_path_obj.name} ({self.width}x{self.height})")
+            else:
+                # Load video
+                self.video_capture = cv2.VideoCapture(video_path)
+                if self.video_capture.isOpened():
+                    # Get actual video dimensions
+                    self.width = int(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    self.height = int(self.video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    print(f"  Loaded video: {video_path_obj.name} ({self.width}x{self.height})")
+                else:
+                    print(f"  Warning: Could not open video {video_path}")
         
         # Initialize components
         self.lag_buffer = LagBuffer(delay_seconds=self.latency_seconds)
@@ -138,7 +154,8 @@ class TeleTouchDemo:
         print(f"  Video: {'Loaded' if self.video_capture else 'Synthetic'}")
     
     def get_background_frame(self) -> np.ndarray:
-        """Get the background frame (video or synthetic)."""
+        """Get the background frame (video, image, or synthetic)."""
+        # Try video first
         if self.video_capture is not None:
             ret, frame = self.video_capture.read()
             if not ret:
@@ -146,7 +163,18 @@ class TeleTouchDemo:
                 self.video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 ret, frame = self.video_capture.read()
             if ret:
+                # Resize if needed to match display dimensions
+                if frame.shape[1] != self.width or frame.shape[0] != self.height:
+                    frame = cv2.resize(frame, (self.width, self.height))
                 return frame
+        
+        # Try static image
+        if self.background_image is not None:
+            frame = self.background_image.copy()
+            # Resize if needed
+            if frame.shape[1] != self.width or frame.shape[0] != self.height:
+                frame = cv2.resize(frame, (self.width, self.height))
+            return frame
         
         # Synthetic background (dark with subtle grid)
         frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
@@ -442,7 +470,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="TELE-TOUCH Surgical Prediction Demo")
     parser.add_argument("--video", type=str, default=None,
-                        help="Path to surgical video file")
+                        help="Path to surgical video file or image (jpg/png)")
     parser.add_argument("--model", type=str, default=None,
                         help="Path to trained AI model (.pth)")
     parser.add_argument("--kinematics", type=str, default=None,
